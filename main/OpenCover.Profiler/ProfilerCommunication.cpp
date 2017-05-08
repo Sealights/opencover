@@ -18,7 +18,8 @@
 #define MSG_UNION_SIZE sizeof(MSG_Union)
 namespace Communication
 {
-	ProfilerCommunication::ProfilerCommunication(DWORD short_wait, DWORD version_high, DWORD version_low)
+	ProfilerCommunication::ProfilerCommunication(DWORD short_wait, DWORD version_high, DWORD version_low) :
+		_logger(GetDefaultLogger())
 	{
 		_bufferId = 0;
 		_pMSG = nullptr;
@@ -187,7 +188,10 @@ namespace Communication
 		return true;
 	}
 
-	bool ProfilerCommunication::Initialise(TCHAR *key, TCHAR *ns, TCHAR *processName)
+	bool ProfilerCommunication::Initialise(
+		TCHAR *key, TCHAR *ns, 
+		TCHAR *processName, 
+		bool safe_mode, int sendVisitPointsTimerInterval)
 	{
 		_key = key;
 		_processName = processName;
@@ -212,6 +216,11 @@ namespace Communication
 
 		if (!InitializeBufferSynchronization(resource_name)) 
 			return false;
+		
+		_sendTimer.Start([=]()
+		{
+			SendRemainingVisitPoints(safe_mode);
+		}, sendVisitPointsTimerInterval);
 
 		return _hostCommunicationActive;
 	}
@@ -257,6 +266,14 @@ namespace Communication
 				SendThreadVisitPoints(it->second);
 			}
 		}
+	}
+
+	void ProfilerCommunication::SendRemainingVisitPoints(bool safemode)
+	{
+		if (safemode)
+			SendVisitPoints();
+		else
+			SendRemainingThreadBuffers();
 	}
 
 	void ProfilerCommunication::AddVisitPointToThreadBuffer(ULONG uniqueId, MSG_IdType msgType)
@@ -326,6 +343,8 @@ namespace Communication
 		if (!_hostCommunicationActive)
 			return;
 		try {
+			_logger.Log("ProfilerCommunication : Flushing visit points to host\n");
+
 			_memoryResults.FlushViewOfFile();
 
 			DWORD dwSignal = _eventProfilerHasResults.SignalAndWait(_eventResultsHaveBeenReceived, _short_wait);
@@ -519,6 +538,9 @@ namespace Communication
 	}
 
 	void ProfilerCommunication::CloseChannel(bool sendSingleBuffer) {
+
+		_sendTimer.Stop();
+
 		if (_bufferId == 0)
 			return;
 
@@ -528,10 +550,7 @@ namespace Communication
 		if (!TestSemaphore(_semapore_results))
 			return;
 
-		if (sendSingleBuffer)
-			SendVisitPoints();
-		else
-			SendRemainingThreadBuffers();
+		SendRemainingVisitPoints(sendSingleBuffer);
 
 		if (!_hostCommunicationActive)
 			return;
