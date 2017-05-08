@@ -118,7 +118,6 @@
       <GenerateXMLDocumentationFiles>true</GenerateXMLDocumentationFiles>
       <PrecompiledHeaderOutputFile>$(IntDir)$(TargetName)$(PlatformArchitecture).pch</PrecompiledHeaderOutputFile>
       <EnablePREfast>true</EnablePREfast>
-      <AdditionalIncludeDirectories>../Logger/</AdditionalIncludeDirectories>
     </ClCompile>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -371,11 +370,6 @@
   </ItemGroup>
   <ItemGroup>
     <Midl Include="OpenCoverProfiler.idl" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Logger\Logger.vcxproj">
-      <Project>{4ea62a62-c652-4623-a199-ec79ae2a19f0}</Project>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
